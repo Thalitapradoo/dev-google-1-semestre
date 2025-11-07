@@ -80,7 +80,7 @@ void loop() {
     }
   }
 }*/
-
+/*
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 
@@ -163,5 +163,75 @@ void loop() {
       digitalWrite(ledPin, ledLigado ? HIGH : LOW);
       ultimoMillis = agora;
     }
+  }
+}*/
+
+#include <Arduino.h>
+#include <BluetoothSerial.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+BluetoothSerial BT;
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+unsigned long ultimoUpdate = 0;
+const unsigned long intervalo = 1000; 
+
+String umid = "";
+String tempC = "";
+String tempF = "";
+bool dadosNovos = false;
+
+void setup() {
+  Serial.begin(9600);
+  lcd.init();
+  lcd.backlight();
+
+  if (!BT.begin("ESP32_Slave")) {
+    Serial.println(" Erro ao iniciar Bluetooth!");
+    while (true);
+  }
+
+  Serial.println(" Bluetooth Slave pronto!");
+  lcd.setCursor(0, 0);
+  lcd.print("Aguardando dados...");
+}
+
+void loop() {
+ 
+  if (BT.available()) {
+    String recebido = BT.readStringUntil('\n');
+    recebido.trim();
+    Serial.println(" Recebido: " + recebido);
+
+    
+    int p1 = recebido.indexOf(',');
+    int p2 = recebido.lastIndexOf(',');
+
+    if (p1 > 0 && p2 > p1) {
+      umid = recebido.substring(0, p1);
+      tempC = recebido.substring(p1 + 1, p2);
+      tempF = recebido.substring(p2 + 1);
+      dadosNovos = true;
+    }
+  }
+
+  
+  unsigned long agora = millis();
+  if (agora - ultimoUpdate >= intervalo && dadosNovos) {
+    ultimoUpdate = agora;
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Umi: ");
+    lcd.print(umid);
+    lcd.print("%");
+
+    lcd.setCursor(0, 1);
+    lcd.print("T: ");
+    lcd.print(tempC);
+    lcd.print("C ");
+    lcd.print(tempF);
+    lcd.print("F");
   }
 }
